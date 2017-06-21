@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+		<script src="http://code.highcharts.com/highcharts.js"></script>
+		<!-- Load the js file that sets the "data" variable -->
+		<script src="ascent_data.js"></script>
+		
+		<!-- Pre-process the data ready for plotting -->
+		<script>
+			// Pick out the column headers to detect the data types.
+			var headers = data.shift(1);
+			
+			// Create lookup table for units
+			var units = {
+				Time			: "s",
+				
+				Altitude 		: "km",
+				Periapsis		: "km",
+				Apoapsis		: "km",
+					
+				Velocity		: "m/s",
+				SurfaceVelocity : "m/s",
+				OrbitalVelocity	: "m/s",
+				
+				Throttle		: "%",
+				Stage			: "",
+				Azimuth			: "deg",
+				Elevation		: "deg",
+				
+				DeltaV			: "m/s",
+					
+				Eccentricity	: "",
+				Inclination		: "deg",
+			};
+			
+			// Create lookup table for titles - (only needed if we want multi-word headers or special characters)
+			var title = {
+				Time			: "Time",
+					
+				Altitude 		: "Altitude",
+				Periapsis		: "Periapsis",
+				Apoapsis		: "Apoapsis",
+					
+				Velocity		: "Velocity",
+				SurfaceVelocity : "Surface Velocity",
+				OrbitalVelocity	: "Orbital Velocity",
+				
+				Throttle		: "Throttle",
+				Stage			: "Stage",
+				Azimuth			: "Azimuth",
+				Elevation		: "Elevation",
+				
+				DeltaV			: "DeltaV",
+				
+				Eccentricity	: "Orbit Eccentricity",
+				Inclination		: "Orbit Inclination"
+			};
+			
+			var DefaultColumns = headers.slice();
+			
+			// Extract the Time - X Coordinates
+			var XData = [];
+			XData.push({
+				name: 			title["Time"], 
+				valueSuffix: 	units["Time"], 
+				data: 			data.map(function(value,index) {return value[headers.indexOf("Time")]})
+			});
+			
+			// Remove the header from the default columns group!
+			DefaultColumns.splice(DefaultColumns.indexOf("Time"),1);
+			
+			// Produce 'Height' dataset (includes altitude, periapsis and apoapsis)
+			var HeightColumns = ["Altitude", "Apoapsis", "Periapsis"];
+			
+			var HeightData = [];
+
+			for (i in HeightColumns) {
+				if (headers.indexOf(HeightColumns[i]) > -1) {
+					HeightData.push({
+						name: 			title[HeightColumns[i]] + ' (' + units[HeightColumns[i]] + ')', 
+						data: 			data.map(function(value,index) {return value[headers.indexOf(HeightColumns[i])]}),
+						tooltip:		{valueSuffix: ' ' + units[HeightColumns[i]]}
+					});
+					
+					// Remove the header from the default columns group!
+					DefaultColumns.splice(DefaultColumns.indexOf(HeightColumns[i]),1);
+				};
+			};
+			
+			// Produce 'Speed' dataset (includes velocity, surface velocity and orbital velocity)
+			var SpeedColumns = ["Velocity", "SurfaceVelocity", "OrbitalVelocity"];
+			
+			var SpeedData = [];
+			
+			for (i in SpeedColumns) {
+			
+				if (headers.indexOf(SpeedColumns[i]) > -1) {
+					SpeedData.push({
+						name: 			title[SpeedColumns[i]] + ' (' + units[SpeedColumns[i]] + ')', 
+						data:			data.map(function(value,index) {return value[headers.indexOf(SpeedColumns[i])]}),
+						tooltip:		{valueSuffix: ' ' + units[SpeedColumns[i]]}
+					});
+					
+					// Remove the header from the default columns group!
+					DefaultColumns.splice(DefaultColumns.indexOf(SpeedColumns[i]),1); 
+				};
+			};
+			
+			// Produce 'Default' dataset (includes all remaining data)
+			//console.log(DefaultColumns);
+			
+			var DefaultData = [];
+			
+			for (i in DefaultColumns) {
+				if (headers.indexOf(DefaultColumns[i]) > -1) {
+					DefaultData.push({
+						name: 			title[DefaultColumns[i]],  
+						data: 			data.map(function(value,index) {return value[headers.indexOf(DefaultColumns[i])]}),
+						tooltip:		{valueSuffix: ' ' + units[DefaultColumns[i]]}
+					});
+				};
+			};
+		</script>
+	</head>
+	<body>
+	
+		<h1>Flight Telemetrics</h1>
+		<div id="Graphs"></div>
+
+<!--<script>		
+/**
+ * In order to synchronize tooltips and crosshairs, override the
+ * built-in events with handlers defined on the parent element.
+ */
+$('#Graphs').bind('mousemove touchmove touchstart', function (e) {
+    var chart,
+        point,
+        i,
+        event;
+
+    for (i = 0; i < Highcharts.charts.length; i = i + 1) {
+        chart = Highcharts.charts[i];
+        event = chart.pointer.normalize(e.originalEvent); // Find coordinates within the chart
+        point = chart.series[0].searchPoint(event, true); // Get the hovered point
+
+        if (point) {
+            point.highlight(e);
+        }
+    }
+});
+/**
+ * Override the reset function, we don't need to hide the tooltips and crosshairs.
+ */
+Highcharts.Pointer.prototype.reset = function () {
+    return undefined;
+};
+
+/**
+ * Highlight a point by showing tooltip, setting hover state and draw crosshair
+ */
+Highcharts.Point.prototype.highlight = function (event) {
+    this.onMouseOver(); // Show the hover marker
+    this.series.chart.tooltip.refresh(this); // Show the tooltip
+    this.series.chart.xAxis[0].drawCrosshair(event, this); // Show the crosshair
+};
+
+/**
+ * Synchronize zooming through the setExtremes event handler.
+ */
+function syncExtremes(e) {
+    var thisChart = this.chart;
+
+    if (e.trigger !== 'syncExtremes') { // Prevent feedback loop
+        Highcharts.each(Highcharts.charts, function (chart) {
+            if (chart !== thisChart) {
+                if (chart.xAxis[0].setExtremes) { // It is null while updating
+                    chart.xAxis[0].setExtremes(e.min, e.max, undefined, false, { trigger: 'syncExtremes' });
+                }
+            }
+        });
+    }
+}
+
+
+        $('<div class="chart">')
+            .appendTo('#Graphs')
+            .highcharts({
+                chart: {
+                    marginLeft: 40, // Keep all charts left aligned
+                    spacingTop: 20,
+                    spacingBottom: 20
+                },
+                title: {
+                    text: HeightData.name,
+                    align: 'left',
+                    margin: 0,
+                    x: 30
+                },
+                credits: {
+                    enabled: false
+                },
+                legend: {
+                    enabled: false
+                },
+                xAxis: {
+                    crosshair: true,
+                    events: {
+                        setExtremes: syncExtremes
+                    },
+                    labels: {
+                        format: '{value} km'
+                    }
+                },
+                yAxis: {
+                    title: {
+                        text: null
+                    }
+                },
+                tooltip: {
+                    positioner: function () {
+                        return {
+                            x: this.chart.chartWidth - this.label.width, // right aligned
+                            y: 10 // align to title
+                        };
+                    },
+                    borderWidth: 0,
+                    backgroundColor: 'none',
+                    pointFormat: '{point.y}',
+                    headerFormat: '',
+                    shadow: false,
+                    style: {
+                        fontSize: '18px'
+                    }
+                    //valueDecimals: HeightData.valueDecimals
+                },
+                series: HeightData
+            });
+</script>-->
+		
+		<script>
+			$(document).ready(function(){
+				// Create required graph containers
+				if (HeightData.length > 0) {
+					$("#Graphs").append("<div id='Height_Graphs'></div>");
+					
+					// Create the height graph
+					$('#Height_Graphs').highcharts({
+						chart: {
+						  zoomType: 'x'
+						},
+						title: {
+						  text: 'Craft and Orbit Altitude'
+						},
+						xAxis: {
+						  categories: XData[0].data.map(Math.round)
+						},
+						yAxis: {
+						  plotLines: [{
+							value: 0,
+							width: 1,
+							color: '#808080'
+						  }]
+						},
+						legend: {
+						  layout: 'vertical',
+						  align: 'right',
+						  verticalAlign: 'middle',
+						  borderWidth: 3
+						},
+						series: HeightData
+					});
+				}
+				
+				if (SpeedData.length > 0) {
+					$("#Graphs").append("<div id='Speed_Graphs'></div>");
+					
+					// Create the speed graph
+					$('#Speed_Graphs').highcharts({
+						chart: {
+						  zoomType: 'x'
+						},
+						title: {
+						  text: 'Craft Velocity Readings'
+						},
+						xAxis: {
+						  categories: XData[0].data.map(Math.round)
+						},
+						yAxis: {
+						  plotLines: [{
+							value: 0,
+							width: 1,
+							color: '#808080'
+						  }]
+						},
+						legend: {
+						  layout: 'vertical',
+						  align: 'right',
+						  verticalAlign: 'middle',
+						  borderWidth: 3
+						},
+						series: SpeedData
+					});
+				}
+				
+				if (DefaultData.length > 0) {
+					$("#Graphs").append("<div id='Default_Graphs'></div>");
+					for (Column in DefaultData) {
+						$('<div class="A_Graph">')
+							.appendTo('#Default_Graphs')							
+							.highcharts({
+							chart: {
+							  zoomType: 'x'
+							},
+							title: {
+							  text: title[DefaultColumns[Column]]
+							},
+							xAxis: {
+							  categories: XData[0].data.map(Math.round)
+							},
+							yAxis: {
+							  plotLines: [{
+								value: 0,
+								width: 1,
+								color: '#808080'
+							  }]
+							},
+							legend: {
+							  layout: 'vertical',
+							  align: 'right',
+							  verticalAlign: 'middle',
+							  borderWidth: 3
+							},
+							series: [DefaultData[Column]]
+						});
+					}
+				}
+			});
+		</script>
+		
+		<!--<script>
+			/**
+			 * Override the reset function, we don't need to hide the tooltips and crosshairs.
+			 */
+			Highcharts.Pointer.prototype.reset = function () {
+				return undefined;
+			};
+			/**
+			 * Highlight a point by showing tooltip, setting hover state and draw crosshair
+			 */
+			Highcharts.Point.prototype.highlight = function (event) {
+				this.onMouseOver(); // Show the hover marker
+				this.series.chart.tooltip.refresh(this); // Show the tooltip
+				this.series.chart.xAxis[0].drawCrosshair(event, this); // Show the crosshair
+			};
+		</script>-->
+	</body>
+</html>
