@@ -1,5 +1,6 @@
 // Ascent Logging Library
-// ToDo: Bring headers and data into agreement!
+// by JEGHC
+// builds upon work by gisikw at https://github.com/gisikw/ksprogramming
 
 run TxRx.
 

@@ -1,3 +1,6 @@
+// Simple but efficent Launch Program
+// by JEGHC
+
 CLEARSCREEN.
 switch to 0.
 run ascent_log.ks.
